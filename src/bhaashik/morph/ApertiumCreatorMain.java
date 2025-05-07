@@ -3,6 +3,7 @@ package bhaashik.morph;
 import bhaashik.morph.model.FeatureStructureEntry;
 import bhaashik.morph.model.LexiconEntry;
 import bhaashik.morph.model.ParadigmCategory;
+import bhaashik.morph.model.ParadigmFSEntries;
 import bhaashik.morph.model.exporter.ApertiumDictionaryWriter;
 import bhaashik.morph.model.parser.FeatureStructureParser;
 import bhaashik.morph.model.parser.LexiconParser;
@@ -29,21 +30,23 @@ public class ApertiumCreatorMain {
             ParadigmFileParser paradigmParser = new ParadigmFileParser();
             List<ParadigmCategory> categories = new ArrayList<>();
             for (File file : Objects.requireNonNull(paradigmDir.listFiles((d, name) -> name.endsWith(".p")))) {
-                categories.add(paradigmParser.parse(file));
+                categories.add(paradigmParser.parseParadigmFile(file));
             }
 
             // 2. Parse lexicon
             LexiconParser lexiconParser = new LexiconParser();
 //        List<LexiconEntry> lexicon = lexiconParser.parse(lexiconFile);
-            List<LexiconEntry> lexicon = lexiconParser.parse(lexiconFile);
+            List<LexiconEntry> lexicon = lexiconParser.parseLexiconFile(lexiconFile);
 
             // 3. Parse feature structure file
-            FeatureStructureParser fsParser = new FeatureStructureParser();
-            Map<String, List<FeatureStructureEntry>> fsMap = fsParser.parse(featureFile);
+//            FeatureStructureParser fsParser = new FeatureStructureParser();
+            ParadigmFSEntries featureSet = FeatureStructureParser.parseFeatureStructureFile(featureFile);
+//            Map<String, List<FeatureStructureEntry>> featureStructureEntrySet = fsParser.featureFile);
+            Set<FeatureStructureEntry> featureStructureEntrySet = featureSet.getEntries();
 
             // 4. Generate and write .dix
 //        ApertiumDictionaryWriter writer = new ApertiumDictionaryWriter();
-            ApertiumDictionaryWriter.writeDixFile(outputDix, categories, fsMap, lexicon, alphabet);
+            ApertiumDictionaryWriter.writeDixFile(outputDix, categories, featureStructureEntrySet, lexicon, alphabet);
 
             System.out.println("✅ Successfully generated: " + outputDix.getAbsolutePath());
         } catch (Exception e) {

@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 import bhaashik.morph.model.FeatureStructure;
 import bhaashik.morph.model.FeatureStructureEntry;
 import bhaashik.morph.model.Lemma;
-import bhaashik.morph.model.ParadigmFeatureSet;
+import bhaashik.morph.model.ParadigmFSEntries;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
@@ -19,11 +19,11 @@ public class FeatureStructureParser {
 
     private static final Pattern FS_PATTERN = Pattern.compile("<fs af='([^']*)'\s*(.*?)>");
 
-    public static ParadigmFeatureSet parseFeatureStructureFile(File file) throws IOException {
+    public static ParadigmFSEntries parseFeatureStructureFile(File file) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             String categoryName = null;
-            ParadigmFeatureSet featureSet = null;
+            ParadigmFSEntries featureSet = null;
             FeatureStructure currentFS = null;
             Lemma currentLemma = null;
 //            String lemmaString = null;
@@ -34,7 +34,7 @@ public class FeatureStructureParser {
 
                 if (line.startsWith("[[") && line.endsWith("]]")) {
                     categoryName = line.substring(2, line.length() - 2);
-                    featureSet = new ParadigmFeatureSet(categoryName);
+                    featureSet = new ParadigmFSEntries(categoryName);
                 } else if (line.startsWith("<fs")) {
                     Matcher matcher = FS_PATTERN.matcher(line);
                     if (matcher.find()) {
@@ -79,19 +79,19 @@ public class FeatureStructureParser {
         return word != null && !word.isEmpty() && word.matches("[\u0900-\u097F\\w]") ; // Example: allow Devanagari + word characters
     }
 
-    public static void writeToJson(ParadigmFeatureSet featureSet, File outputFile) throws IOException {
+    public static void writeToJson(ParadigmFSEntries featureSet, File outputFile) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.writerWithDefaultPrettyPrinter().writeValue(outputFile, featureSet);
     }
 
-    public static void writeToXml(ParadigmFeatureSet featureSet, File outputFile) throws IOException {
+    public static void writeToXml(ParadigmFSEntries featureSet, File outputFile) throws IOException {
         XmlMapper xmlMapper = new XmlMapper();
         xmlMapper.writeValue(outputFile, featureSet);
     }
 
     public static void main(String[] args) throws IOException {
         File input = new File("data/Noun_m_features.txt");
-        ParadigmFeatureSet featureSet = parseFeatureStructureFile(input);
+        ParadigmFSEntries featureSet = parseFeatureStructureFile(input);
 
         // Export to JSON and XML
         writeToJson(featureSet, new File("output/Noun_m_features.json"));

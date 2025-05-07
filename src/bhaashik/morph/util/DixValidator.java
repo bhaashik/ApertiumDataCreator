@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -27,7 +28,7 @@ public class DixValidator {
 
             NodeList children = root.getChildNodes();
             boolean hasAlphabet = false, hasSdefs = false, hasMain = false;
-            Set<String> pardefNames = new HashSet<>();
+            Set<String> pardefNames = new LinkedHashSet<>();
 
             for (int i = 0; i < children.getLength(); i++) {
                 Node node = children.item(i);
@@ -122,7 +123,7 @@ public class DixValidator {
 
             NodeList children = root.getChildNodes();
             boolean hasAlphabet = false, hasSdefs = false, hasMain = false;
-            Set<String> pardefNames = new HashSet<>();
+            Set<String> pardefNames = new LinkedHashSet<>();
 
             for (int i = 0; i < children.getLength(); i++) {
                 Node node = children.item(i);

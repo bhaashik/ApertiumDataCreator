@@ -12,7 +12,8 @@ public class ApertiumDictionaryWriter {
     public static void writeDixFile(
             File outputFile,
             List<ParadigmCategory> categories,
-            Map<String, List<FeatureStructureEntry>> featureStructureMap,
+//            Map<String, List<FeatureStructureEntry>> featureStructureEntrySet,
+            Set<FeatureStructureEntry> featureStructureEntries,
             List<LexiconEntry> lexiconEntries,
             Set<Character> alphabet
     ) throws IOException {
@@ -29,7 +30,7 @@ public class ApertiumDictionaryWriter {
 
             // sdefs: inferred from feature structures
             writer.write("  <sdefs>\n");
-            Set<String> sdefSet = extractSdefs(featureStructureMap);
+            Set<String> sdefSet = extractSdefs(featureStructureEntries);
             for (String sdef : sdefSet) {
                 writer.write("    <sdef n=\"" + sdef + "\"/>\n");
             }
@@ -41,7 +42,11 @@ public class ApertiumDictionaryWriter {
             // Paradigm definitions
             for (ParadigmCategory category : categories) {
                 for (SpecificParadigm paradigm : category.getParadigms()) {
-                    List<FeatureStructureEntry> fsEntries = featureStructureMap.getOrDefault(paradigm.getLemma().getLemmaString(), new ArrayList<>());
+//                    List<FeatureStructureEntry> fsEntries = featureStructureEntrySet.pgetOrDefault(paradigm.getLemma().getLemmaString(), new ArrayList<>());
+                    List<FeatureStructureEntry> fsEntries = new ArrayList<>();
+//                    featureStructureEntrySet.addAll(paradigm.getLemma().getLemmaString(), new ArrayList<>());
+                    fsEntries.addAll(featureStructureEntries);
+
                     writer.write(PardefExporter.exportPardef(category, paradigm, fsEntries));
                 }
             }
@@ -59,13 +64,18 @@ public class ApertiumDictionaryWriter {
         }
     }
 
-    private static Set<String> extractSdefs(Map<String, List<FeatureStructureEntry>> featureStructureMap) {
-        Set<String> sdefs = new HashSet<>();
-        for (List<FeatureStructureEntry> entries : featureStructureMap.values()) {
-            for (FeatureStructureEntry entry : entries) {
-//                sdefs.addAll(entry.getFeatureStructure().getFeatures().values());
-                sdefs.addAll(entry.getFeatureStructure().getAllFeatures().values());
-            }
+//    private static Set<String> extractSdefs(Map<String, List<FeatureStructureEntry>> featureStructureSet) {
+    private static Set<String> extractSdefs(Set<FeatureStructureEntry> featureStructureSet) {
+        Set<String> sdefs = new LinkedHashSet<>();
+//         for (List<FeatureStructureEntry> entries : featureStructureSet.en) {
+//            for (FeatureStructureEntry entry : entries) {
+////                sdefs.addAll(entry.getFeatureStructure().getFeatures().values());
+//                sdefs.addAll(entry.getFeatureStructure().getAllFeatures().values());
+//            }
+//        }
+
+        for (FeatureStructureEntry entry : featureStructureSet) {
+            sdefs.addAll(entry.getFeatureStructure().getAllFeatures().values());
         }
         return sdefs;
     }
@@ -75,12 +85,13 @@ public class ApertiumDictionaryWriter {
         File output = new File("path/to/output.dix");
         List<ParadigmCategory> paradigmCategories = List.of();
         List<LexiconEntry> lexiconEntries = List.of();
-        Map<String, List<FeatureStructureEntry>> featureStructureMap = Map.of();
+//        Map<String, List<FeatureStructureEntry>> featureStructureSet = Map.of();
+        Set<FeatureStructureEntry> featureStructureSet = Set.of();
         Set<Character> inferredAlphabet = Set.of();
         ApertiumDictionaryWriter.writeDixFile(
                 output,
                 paradigmCategories,         // list of ParadigmCategory
-                featureStructureMap,        // lemma → list of FeatureStructureEntry
+                featureStructureSet,        // lemma → list of FeatureStructureEntry
                 lexiconEntries,             // parsed from your lexicon file
                 inferredAlphabet            // Set<Character> from .p files + lexicon
         );
