@@ -1,0 +1,22 @@
+<component name="libraryTable">
+  <library name="fasterxml.jackson.dataformat.xml" type="repository">
+    <properties maven-id="com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.19.0" />
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/jackson-dataformat-xml-2.19.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jackson-core-2.19.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jackson-annotations-2.19.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jackson-databind-2.19.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/stax2-api-4.2.2.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/woodstox-core-7.1.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/jackson-dataformat-xml-2.19.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jackson-core-2.19.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jackson-annotations-2.19.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jackson-databind-2.19.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/stax2-api-4.2.2-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/woodstox-core-7.1.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

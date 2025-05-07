@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 
 import bhaashik.morph.model.FeatureStructure;
 import bhaashik.morph.model.FeatureStructureEntry;
+import bhaashik.morph.model.Lemma;
 import bhaashik.morph.model.ParadigmFeatureSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -24,7 +25,8 @@ public class FeatureStructureParser {
             String categoryName = null;
             ParadigmFeatureSet featureSet = null;
             FeatureStructure currentFS = null;
-            String lemma = null;
+            Lemma currentLemma = null;
+//            String lemmaString = null;
 
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
@@ -52,18 +54,20 @@ public class FeatureStructureParser {
                             }
                         }
 
+                        currentLemma = new Lemma(parts[0]);
+
                         currentFS = new FeatureStructure(
-                                parts[0], parts[1], parts[2], parts[3],
+                                currentLemma, parts[1], parts[2], parts[3],
                                 parts[4], parts[5], parts[6], parts[7], additional
                         );
                     }
                 } else if (line.startsWith(">>") && currentFS != null) {
                     String surface = line.substring(2).trim();
                     if (isValidWord(surface)) {
-                        featureSet.addEntry(new FeatureStructureEntry(currentFS, lemma, surface));
+                        featureSet.addEntry(new FeatureStructureEntry(currentFS, currentLemma, surface));
                     }
                 } else if (line.startsWith(">")) {
-                    lemma = line.substring(1).trim();
+                    currentLemma = new Lemma(line.substring(1).trim());
                 }
             }
 
@@ -72,7 +76,7 @@ public class FeatureStructureParser {
     }
 
     private static boolean isValidWord(String word) {
-        return word != null && !word.isEmpty() && word.matches("[\u0900-\u097F\w]+(") ; // Example: allow Devanagari + word characters
+        return word != null && !word.isEmpty() && word.matches("[\u0900-\u097F\\w]") ; // Example: allow Devanagari + word characters
     }
 
     public static void writeToJson(ParadigmFeatureSet featureSet, File outputFile) throws IOException {

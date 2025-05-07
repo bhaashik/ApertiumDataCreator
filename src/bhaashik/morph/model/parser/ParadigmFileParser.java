@@ -1,5 +1,6 @@
 package bhaashik.morph.model.parser;
 
+import bhaashik.morph.model.Lemma;
 import bhaashik.morph.model.ParadigmCategory;
 import bhaashik.morph.model.SpecificParadigm;
 import bhaashik.morph.model.WordForm;
@@ -53,7 +54,7 @@ public class ParadigmFileParser {
 
             while (i < allLines.size()) {
                 String lemma = allLines.get(i++);
-                SpecificParadigm specificParadigm = new SpecificParadigm(lemma);
+                SpecificParadigm specificParadigm = new SpecificParadigm(new Lemma(lemma));
 
                 for (int j = 0; j < numForms && i < allLines.size(); j++) {
                     specificParadigm.addWordForm(new WordForm(allLines.get(i++)));
