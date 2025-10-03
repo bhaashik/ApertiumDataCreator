@@ -8,22 +8,27 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import bhaashik.morph.model.ParCatFeatureStructures;
 import bhaashik.morph.model.FeatureStructure;
 import bhaashik.morph.model.FeatureStructureEntry;
 import bhaashik.morph.model.Lemma;
-import bhaashik.morph.model.ParadigmFSEntries;
+import bhaashik.morph.model.ParadigmCategoryToFSSetMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 public class FeatureStructureParser {
 
+    public final static LinkedHashMap<String, String> symbolDefinitions = new LinkedHashMap<>();
+
     private static final Pattern FS_PATTERN = Pattern.compile("<fs af='([^']*)'\s*(.*?)>");
 
-    public static ParadigmFSEntries parseFeatureStructureFile(File file) throws IOException {
+//    public static ParadigmCategoryFSEntries parseFeatureStructureFile(File file) throws IOException {
+    public static ParadigmCategoryToFSSetMap parseFeatureStructureFile(File file) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             String categoryName = null;
-            ParadigmFSEntries featureSet = null;
+            ParCatFeatureStructures parCatFeatureStructures = null;
+            ParadigmCategoryToFSSetMap paradigmCategoryToFSSetMap = new ParadigmCategoryToFSSetMap();
             FeatureStructure currentFS = null;
             Lemma currentLemma = null;
 //            String lemmaString = null;
@@ -34,11 +39,15 @@ public class FeatureStructureParser {
 
                 if (line.startsWith("[[") && line.endsWith("]]")) {
                     categoryName = line.substring(2, line.length() - 2);
-                    featureSet = new ParadigmFSEntries(categoryName);
+//                    paradigmCategoryFSEntries = new ParadigmCategoryFSEntries(categoryName);
+                    parCatFeatureStructures = new ParCatFeatureStructures();
+                    paradigmCategoryToFSSetMap.addParadigmCatogory(categoryName.trim(), parCatFeatureStructures);
                 } else if (line.startsWith("<fs")) {
                     Matcher matcher = FS_PATTERN.matcher(line);
                     if (matcher.find()) {
                         String afValue = matcher.group(1);
+                        symbolDefinitions.put(afValue, afValue);
+
                         String rest = matcher.group(2);
                         String[] parts = afValue.split(",");
                         if (parts.length < 8) continue; // skip invalid entries
@@ -50,6 +59,7 @@ public class FeatureStructureParser {
                                 String[] kv = attr.split("=");
                                 if (kv.length == 2) {
                                     additional.put(kv[0], kv[1].replace("'", ""));
+                                    symbolDefinitions.put(kv[1], kv[1]);
                                 }
                             }
                         }
@@ -64,14 +74,15 @@ public class FeatureStructureParser {
                 } else if (line.startsWith(">>") && currentFS != null) {
                     String surface = line.substring(2).trim();
                     if (isValidWord(surface)) {
-                        featureSet.addEntry(new FeatureStructureEntry(currentFS, currentLemma, surface));
+                        parCatFeatureStructures.addEntry(new FeatureStructureEntry(currentFS, currentLemma, surface));
                     }
                 } else if (line.startsWith(">")) {
                     currentLemma = new Lemma(line.substring(1).trim());
                 }
             }
 
-            return featureSet;
+//            return paradigmCategoryFSEntries;
+            return paradigmCategoryToFSSetMap;
         }
     }
 
@@ -79,27 +90,27 @@ public class FeatureStructureParser {
         return word != null && !word.isEmpty() && word.matches("[\u0900-\u097F\\w]") ; // Example: allow Devanagari + word characters
     }
 
-    public static void writeToJson(ParadigmFSEntries featureSet, File outputFile) throws IOException {
+    public static void writeToJson(ParCatFeatureStructures featureSet, File outputFile) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.writerWithDefaultPrettyPrinter().writeValue(outputFile, featureSet);
     }
 
-    public static void writeToXml(ParadigmFSEntries featureSet, File outputFile) throws IOException {
+    public static void writeToXml(ParCatFeatureStructures featureSet, File outputFile) throws IOException {
         XmlMapper xmlMapper = new XmlMapper();
         xmlMapper.writeValue(outputFile, featureSet);
     }
 
     public static void main(String[] args) throws IOException {
         File input = new File("data/Noun_m_features.txt");
-        ParadigmFSEntries featureSet = parseFeatureStructureFile(input);
+//        ParadigmCategoryFSEntries featureSet = parseFeatureStructureFile(input);
 
         // Export to JSON and XML
-        writeToJson(featureSet, new File("output/Noun_m_features.json"));
-        writeToXml(featureSet, new File("output/Noun_m_features.xml"));
+//        writeToJson(featureSet, new File("output/Noun_m_features.json"));
+//        writeToXml(featureSet, new File("output/Noun_m_features.xml"));
 
         // Optional: filter by POS or paradigm size
-        if (featureSet.getParadigmCategoryName().startsWith("Noun") && featureSet.getEntries().size() > 3) {
-            System.out.println("Valid noun paradigm: " + featureSet);
-        }
+//        if (featureSet.getParadigmCategoryName().startsWith("Noun") && featureSet.getEntries().size() > 3) {
+//            System.out.println("Valid noun paradigm: " + featureSet);
+//        }
     }
 }

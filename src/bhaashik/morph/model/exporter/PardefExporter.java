@@ -2,15 +2,17 @@ package bhaashik.morph.model.exporter;
 
 import bhaashik.morph.model.FeatureStructure;
 import bhaashik.morph.model.FeatureStructureEntry;
+import bhaashik.morph.model.ParCatFeatureStructures;
 import bhaashik.morph.model.ParadigmCategory;
 import bhaashik.morph.model.SpecificParadigm;
 import bhaashik.morph.model.parser.MorphologicalRuleExtractor;
 
 import java.util.List;
+import java.util.Set;
 
 public class PardefExporter {
 
-    public static String exportPardef(ParadigmCategory category, SpecificParadigm paradigm, List<FeatureStructureEntry> featureEntries) {
+    public static String exportPardef(ParadigmCategory category, SpecificParadigm paradigm, ParCatFeatureStructures parCatFeatureStructures) {
         StringBuilder sb = new StringBuilder();
         String pardefName = category.getCategoryName(); // e.g., Noun_m
 
@@ -26,12 +28,23 @@ public class PardefExporter {
             sb.append("    <e>\n");
             sb.append("      ").append(mt.toDixEntry()).append("\n");
 
-            if (featureEntries != null && i < featureEntries.size()) {
-                FeatureStructureEntry fe = featureEntries.get(i);
-                FeatureStructure fs = fe.getFeatureStructure();
-                for (String tag : fs.getAllFeatures().values()) {
-                    sb.append("      <s n=\"").append(tag).append("\"/>\n");
+            if (parCatFeatureStructures != null && i < parCatFeatureStructures.getFeatureStructureSetSize()) {
+                Set<FeatureStructureEntry> featureStructureEntrySet = parCatFeatureStructures.getEntries();
+
+                for(FeatureStructureEntry featureStructureEntry : featureStructureEntrySet) {
+
+                    FeatureStructure featureStructure = featureStructureEntry.getFeatureStructure();
+//                    FeatureStructure fs = fe.getFeatureStructure();
+                    for (String tag : featureStructure.getAllFeatures().values()) {
+                        sb.append("      <s n=\"").append(tag).append("\"/>\n");
+                    }
                 }
+
+//                FeatureStructureEntry fe = parCatFeatureStructures.getEntries(i);
+//                FeatureStructure fs = fe.getFeatureStructure();
+//                for (String tag : fs.getAllFeatures().values()) {
+//                    sb.append("      <s n=\"").append(tag).append("\"/>\n");
+//                }
             }
 
             sb.append("    </e>\n");

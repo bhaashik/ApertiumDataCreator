@@ -13,8 +13,10 @@ import java.util.*;
 public class ParadigmBatchProcessor {
 
     private final ParadigmFileParser parser;
+    LinkedHashMap<String, Integer> perCategoryNumForms;
 
-    public ParadigmBatchProcessor() {
+    public ParadigmBatchProcessor(LinkedHashMap<String, Integer> perCategoryNumForms) {
+        this.perCategoryNumForms = perCategoryNumForms;
         this.parser = new ParadigmFileParser();
     }
 
@@ -40,7 +42,9 @@ public class ParadigmBatchProcessor {
 
         for (File file : files) {
             try {
-                ParadigmCategory category = parser.parseParadigmFile(file);
+                String paradigmCategoryName = file.getName().substring(0, file.getName().length() - 3);
+                int numForms = perCategoryNumForms.get(paradigmCategoryName);
+                ParadigmCategory category = parser.parseParadigmFile(file, numForms);
                 categories.put(category.getCategoryName(), category);
                 System.out.println("Parsed category: " + category.getCategoryName() + " (" + category.getParadigms().size() + " paradigms)");
             } catch (IOException | IllegalArgumentException e) {
@@ -55,18 +59,18 @@ public class ParadigmBatchProcessor {
     public static void main(String[] args) {
         File inputDirectory = new File("path/to/your/paradigm/files");
 
-        ParadigmBatchProcessor batchProcessor = new ParadigmBatchProcessor();
-        try {
-            Map<String, ParadigmCategory> allCategories = batchProcessor.processDirectory(inputDirectory);
-
-            for (Map.Entry<String, ParadigmCategory> entry : allCategories.entrySet()) {
-                System.out.println("Category: " + entry.getKey());
-                for (SpecificParadigm paradigm : entry.getValue().getParadigms()) {
-                    System.out.println("  " + paradigm);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        ParadigmBatchProcessor batchProcessor = new ParadigmBatchProcessor();
+//        try {
+//            Map<String, ParadigmCategory> allCategories = batchProcessor.processDirectory(inputDirectory);
+//
+//            for (Map.Entry<String, ParadigmCategory> entry : allCategories.entrySet()) {
+//                System.out.println("Category: " + entry.getKey());
+//                for (SpecificParadigm paradigm : entry.getValue().getParadigms()) {
+//                    System.out.println("  " + paradigm);
+//                }
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 }

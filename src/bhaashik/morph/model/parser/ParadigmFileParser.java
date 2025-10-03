@@ -23,7 +23,7 @@ public class ParadigmFileParser {
      * @return ParadigmCategory instance with populated data
      * @throws IOException if file cannot be read
      */
-    public ParadigmCategory parseParadigmFile(File file) throws IOException {
+    public ParadigmCategory parseParadigmFile(File file, int numWrdForms) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String categoryName = reader.readLine(); // First line is the paradigm category
             if (categoryName == null || categoryName.isBlank()) {
@@ -43,14 +43,14 @@ public class ParadigmFileParser {
                 throw new IllegalArgumentException("Insufficient data for parsing in: " + file.getName());
             }
 
-            String firstLemma = allLines.get(0);
-            int count = 0;
-            for (int j = 1; j < allLines.size(); j++) {
-                if (allLines.get(j).equals(firstLemma)) break;
-                count++;
-            }
+//            String firstLemma = allLines.get(0);
+//            int count = 0;
+//            for (int j = 1; j < allLines.size(); j++) {
+//                if (allLines.get(j).equals(firstLemma)) break;
+//                count++;
+//            }
 
-            int numForms = count;
+            int numForms = numWrdForms;
 
             while (i < allLines.size()) {
                 String lemma = allLines.get(i++);
@@ -72,7 +72,7 @@ public class ParadigmFileParser {
 
         ParadigmFileParser parser = new ParadigmFileParser();
         try {
-            ParadigmCategory category = parser.parseParadigmFile(file);
+            ParadigmCategory category = parser.parseParadigmFile(file, 4);
             System.out.println("Parsed category: " + category.getCategoryName());
             for (SpecificParadigm p : category.getParadigms()) {
                 System.out.println(p);

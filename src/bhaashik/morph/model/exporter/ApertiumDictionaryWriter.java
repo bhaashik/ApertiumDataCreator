@@ -13,7 +13,8 @@ public class ApertiumDictionaryWriter {
             File outputFile,
             List<ParadigmCategory> categories,
 //            Map<String, List<FeatureStructureEntry>> featureStructureEntrySet,
-            Set<FeatureStructureEntry> featureStructureEntries,
+            ParadigmCategoryToFSSetMap paradigmCategoryToFSSetMap,
+//            Set<FeatureStructureEntry> featureStructureEntries,
             List<LexiconEntry> lexiconEntries,
             Set<Character> alphabet
     ) throws IOException {
@@ -30,7 +31,7 @@ public class ApertiumDictionaryWriter {
 
             // sdefs: inferred from feature structures
             writer.write("  <sdefs>\n");
-            Set<String> sdefSet = extractSdefs(featureStructureEntries);
+            Set<String> sdefSet = extractSdefs(paradigmCategoryToFSSetMap);
             for (String sdef : sdefSet) {
                 writer.write("    <sdef n=\"" + sdef + "\"/>\n");
             }
@@ -41,13 +42,18 @@ public class ApertiumDictionaryWriter {
 
             // Paradigm definitions
             for (ParadigmCategory category : categories) {
+
+                String paradigmCategoryName = category.getCategoryName();
+                ParCatFeatureStructures parCatFeatureStructures = paradigmCategoryToFSSetMap.getParadigmCategoryFSSet(paradigmCategoryName);
+
                 for (SpecificParadigm paradigm : category.getParadigms()) {
 //                    List<FeatureStructureEntry> fsEntries = featureStructureEntrySet.pgetOrDefault(paradigm.getLemma().getLemmaString(), new ArrayList<>());
                     List<FeatureStructureEntry> fsEntries = new ArrayList<>();
-//                    featureStructureEntrySet.addAll(paradigm.getLemma().getLemmaString(), new ArrayList<>());
-                    fsEntries.addAll(featureStructureEntries);
 
-                    writer.write(PardefExporter.exportPardef(category, paradigm, fsEntries));
+//                    featureStructureEntrySet.addAll(paradigm.getLemma().getLemmaString(), new ArrayList<>());
+                    fsEntries.addAll(parCatFeatureStructures.getEntries());
+
+                    writer.write(PardefExporter.exportPardef(category, paradigm, parCatFeatureStructures));
                 }
             }
 
@@ -65,18 +71,41 @@ public class ApertiumDictionaryWriter {
     }
 
 //    private static Set<String> extractSdefs(Map<String, List<FeatureStructureEntry>> featureStructureSet) {
-    private static Set<String> extractSdefs(Set<FeatureStructureEntry> featureStructureSet) {
+    private static Set<String> extractSdefs(ParadigmCategoryToFSSetMap paradigmCategoryToFSSetMap) {
         Set<String> sdefs = new LinkedHashSet<>();
-//         for (List<FeatureStructureEntry> entries : featureStructureSet.en) {
+
+        ArrayList<String> paradigmCategoryNames = paradigmCategoryToFSSetMap.getParadigmCategoryNames();
+        for (int i = 0; i < paradigmCategoryNames.size(); i++) {
+//            for (FeatureStructureEntry entry : paradigmCategoryNames) {
+            for (String parCatName : paradigmCategoryNames) {
+//                sdefs.addAll(entry.getFeatureStructure().getFeatures().values());
+                ParCatFeatureStructures parCatFeatureStructures = paradigmCategoryToFSSetMap.getParadigmCategoryFSSet(parCatName);
+                Set<FeatureStructureEntry> featureStructureEntrySet = parCatFeatureStructures.getEntries();
+
+                for(FeatureStructureEntry entry : featureStructureEntrySet) {
+                    sdefs.addAll(entry.getFeatureStructure().getAllFeatures().values());
+                }
+            }
+//                sdefs.addAll(entry.getFeatureStructure().getAllFeatures().values());
+//                sdefs.addAll(featureStructureEntrySet.getFeatureStructure().getAllFeatures().values());
+
+        }
+//
+//        paradigmCategoryToFSSetMap.entrySet().stream().forEach(entry ->
+//                String parCatName = entry.getKey();
+//                entry.getValue())
+//        );
+//
+//         for (List<FeatureStructureEntry> entries : paradigmCategoryToFSSetMap) {
 //            for (FeatureStructureEntry entry : entries) {
 ////                sdefs.addAll(entry.getFeatureStructure().getFeatures().values());
 //                sdefs.addAll(entry.getFeatureStructure().getAllFeatures().values());
 //            }
 //        }
-
-        for (FeatureStructureEntry entry : featureStructureSet) {
-            sdefs.addAll(entry.getFeatureStructure().getAllFeatures().values());
-        }
+//
+//        for (FeatureStructureEntry entry : featureStructureSet) {
+//            sdefs.addAll(entry.getFeatureStructure().getAllFeatures().values());
+//        }
         return sdefs;
     }
 
@@ -88,13 +117,13 @@ public class ApertiumDictionaryWriter {
 //        Map<String, List<FeatureStructureEntry>> featureStructureSet = Map.of();
         Set<FeatureStructureEntry> featureStructureSet = Set.of();
         Set<Character> inferredAlphabet = Set.of();
-        ApertiumDictionaryWriter.writeDixFile(
-                output,
-                paradigmCategories,         // list of ParadigmCategory
-                featureStructureSet,        // lemma → list of FeatureStructureEntry
-                lexiconEntries,             // parsed from your lexicon file
-                inferredAlphabet            // Set<Character> from .p files + lexicon
-        );
+//        ApertiumDictionaryWriter.writeDixFile(
+//                output,
+//                paradigmCategories,         // list of ParadigmCategory
+//                featureStructureSet,        // lemma → list of FeatureStructureEntry
+//                lexiconEntries,             // parsed from your lexicon file
+//                inferredAlphabet            // Set<Character> from .p files + lexicon
+//        );
 
     }
 }
