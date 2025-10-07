@@ -1,0 +1,7 @@
+ This project is about converting some old data in a different format to Apertium monodix format. The first 84 lines of the file 'ApertiumDataCreator.md'
+  gives a clear idea of the main part of the structure of this old format. The file 'B_M_M_Word-generation-ver-1.9.0.formatted.txt' maps paradigm categories
+  to feature structure, with the first field ('x', 'X' etc.) is a placeholder for the lemma of a word form, obtained from the '.p' paradigm category files.
+  The 'input' directory contains the other files for three languages (Bhojpuri, Maithili and Magahi). There is a directory 'source-files-06-05-25', which
+  you can have a look at, but you have to start afresh from the 'src/main/java' directory as this is an IntelliJ Idea project in Java. The goal is to create
+  Apertium monodix files for the three languages (or any other languages which have data in this old format) such that they can be compiled and so we can
+  get morpholigcal analyzers and generators for these languages using FSTs.
