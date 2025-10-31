@@ -4,11 +4,11 @@
 
 echo "Creating Bhojpuri monodix dictionary..."
 
-INPUT_DIR="input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/bhojpuri"
-OUTPUT_FILE="bhojpuri-monodix.dix"
+INPUT_DIR="input/bhojpuri/morphological-paradigms-and-lexicon"
+OUTPUT_FILE="output/bhojpuri-monodix.dix"
 PARADIGM_DIR="$INPUT_DIR/paradigms"
-LEXICON_FILE="$INPUT_DIR/lexicon.txt"
-FEATURE_FILE="input/B_M_M_Word-generation-ver-1.9.0.formatted.txt"
+LEXICON_FILE="$INPUT_DIR/lexicon/dict.final.txt"
+FEATURE_FILE="B_M_M_Word-generation-ver-1.9.0.formatted.txt"
 TAM_FILE="TAM-Mapping.md"
 
 # Check if input directory exists
@@ -18,15 +18,12 @@ if [ ! -d "$INPUT_DIR" ]; then
 fi
 
 # Run the Apertium creator
-java -cp "bin:lib/sanscript-classes" bhaashik.morph.ApertiumCreatorMain \
-    --language Bhojpuri \
-    --paradigm-dir "$PARADIGM_DIR" \
-    --lexicon-file "$LEXICON_FILE" \
-    --feature-file "$FEATURE_FILE" \
-    --tam-file "$TAM_FILE" \
-    --output "$OUTPUT_FILE" \
-    --script Devanagari \
-    --vibhakti-mode ATTACHED
+java -cp "bin:lib/sanscript-java_2.12-0.4.jar" bhaashik.morph.ApertiumCreatorMain \
+    "$PARADIGM_DIR" \
+    "$LEXICON_FILE" \
+    "." \
+    "$OUTPUT_FILE" \
+    Bhojpuri
 
 if [ $? -eq 0 ]; then
     echo "Successfully created $OUTPUT_FILE"

@@ -46,8 +46,11 @@ public class DotPFormatParadigmReader implements ParadigmReader {
                 SpecificParadigm paradigm = new SpecificParadigm(new Lemma(lemmaStr));
 
                 // Read N word forms for this paradigm
+                // Each word form may contain variants separated by '/'
                 for (int j = 0; j < numForms && i < allLines.size(); j++) {
-                    paradigm.addWordForm(new WordForm(allLines.get(i++)));
+                    String formString = allLines.get(i++);
+                    WordForm wordForm = WordForm.parseWithVariants(formString);
+                    paradigm.addWordForm(wordForm);
                 }
 
                 category.addSpecificParadigm(paradigm);

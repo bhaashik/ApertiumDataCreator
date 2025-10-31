@@ -80,6 +80,33 @@ public class ApertiumMonodixWriter implements DictionaryWriter {
         this.vibhaktiHandling = handling;
     }
 
+    /**
+     * Helper class to represent a unique pardef with stem/suffix split.
+     */
+    private static class PardefInfo {
+        final String pardefName;      // Format: stem/lemma_suffix__category
+        final String stem;
+        final String lemmaSuffix;
+        final String categoryName;
+        final SpecificParadigm paradigm;
+        final ParCatFeatureStructures featureStructures;
+
+        PardefInfo(String stem, String lemmaSuffix, String categoryName,
+                   SpecificParadigm paradigm, ParCatFeatureStructures featureStructures) {
+            this.stem = stem;
+            this.lemmaSuffix = lemmaSuffix;
+            this.categoryName = categoryName;
+            // Format: stem/suffix__category (or just stem__category if suffix is empty)
+            if (lemmaSuffix.isEmpty()) {
+                this.pardefName = stem + "__" + categoryName;
+            } else {
+                this.pardefName = stem + "/" + lemmaSuffix + "__" + categoryName;
+            }
+            this.paradigm = paradigm;
+            this.featureStructures = featureStructures;
+        }
+    }
+
     @Override
     public void writeDictionary(File outputFile, List<ParadigmCategory> categories,
                                ParadigmCategoryToFSSetMap fsMap, List<LexiconEntry> lexicon) throws IOException {
@@ -93,12 +120,95 @@ public class ApertiumMonodixWriter implements DictionaryWriter {
             }
 
             writeSymbolDefinitions(writer, fsMap);
-            writeParadigmDefinitions(writer, categories, fsMap);
-            writeMainSection(writer, lexicon);
+
+            // NEW: Generate pardef info for each lexicon entry
+            Map<String, PardefInfo> pardefs = generatePardefInfoForLexicon(categories, fsMap, lexicon);
+            writeParadigmDefinitionsNew(writer, pardefs);
+            writeMainSectionNew(writer, lexicon, pardefs);
+
             writeFooter(writer);
         }
 
         System.out.println("✓ Exported Apertium monodix to: " + outputFile.getAbsolutePath());
+    }
+
+    /**
+     * Helper method to find longest common prefix between two strings.
+     */
+    private int findLCP(String s1, String s2) {
+        int minLen = Math.min(s1.length(), s2.length());
+        int i = 0;
+        while (i < minLen && s1.charAt(i) == s2.charAt(i)) {
+            i++;
+        }
+        return i;
+    }
+
+    /**
+     * Generates PardefInfo for each unique stem/suffix combination in the lexicon.
+     */
+    private Map<String, PardefInfo> generatePardefInfoForLexicon(
+            List<ParadigmCategory> categories, ParadigmCategoryToFSSetMap fsMap,
+            List<LexiconEntry> lexicon) {
+
+        Map<String, PardefInfo> pardefs = new LinkedHashMap<>();
+
+        // Create a lookup map for categories
+        Map<String, ParadigmCategory> categoryMap = new HashMap<>();
+        for (ParadigmCategory cat : categories) {
+            categoryMap.put(cat.getCategoryName(), cat);
+        }
+
+        for (LexiconEntry entry : lexicon) {
+            String lemma = entry.getLemma();
+            String categoryName = entry.getParadigmCategory();
+
+            ParadigmCategory category = categoryMap.get(categoryName);
+            if (category == null || category.getParadigms().isEmpty()) {
+                System.out.println("⚠ Warning: No paradigm found for category: " + categoryName);
+                continue;
+            }
+
+            ParCatFeatureStructures parCatFS = fsMap.getParadigmCategoryFSSet(categoryName);
+            if (parCatFS == null) {
+                System.out.println("⚠ Warning: No feature structures for category: " + categoryName);
+                continue;
+            }
+
+            // Use first paradigm as template (could match by specific paradigm name if needed)
+            SpecificParadigm paradigm = category.getParadigms().get(0);
+            String paradigmLemma = paradigm.getLemma().getLemmaString();
+
+            // Extract stem by finding longest common prefix of lemma and ALL inflected forms
+            String commonStem = lemma;
+            for (WordForm wf : paradigm.getWordForms()) {
+                for (String variant : wf.getVariants()) {
+                    // Find LCP between current common stem and this variant
+                    int lcp = findLCP(commonStem, variant);
+                    commonStem = commonStem.substring(0, lcp);
+                }
+            }
+
+            String entryStem = commonStem;
+            String entryLemmaSuffix = lemma.substring(commonStem.length());
+
+            // Generate unique pardef name for this entry
+            String pardefName;
+            if (entryLemmaSuffix.isEmpty()) {
+                pardefName = entryStem + "__" + categoryName;
+            } else {
+                pardefName = entryStem + "/" + entryLemmaSuffix + "__" + categoryName;
+            }
+
+            if (!pardefs.containsKey(pardefName)) {
+                PardefInfo pardefInfo = new PardefInfo(
+                    entryStem, entryLemmaSuffix, categoryName, paradigm, parCatFS);
+                pardefs.put(pardefName, pardefInfo);
+            }
+        }
+
+        System.out.println("✓ Generated " + pardefs.size() + " unique pardefs for " + lexicon.size() + " lexicon entries");
+        return pardefs;
     }
 
     private void writeHeader(FileWriter writer) throws IOException {
@@ -224,6 +334,65 @@ public class ApertiumMonodixWriter implements DictionaryWriter {
         }
     }
 
+    /**
+     * NEW: Writes paradigm definitions with proper stem/suffix split format.
+     */
+    private void writeParadigmDefinitionsNew(FileWriter writer, Map<String, PardefInfo> pardefs) throws IOException {
+        writer.write("  <pardefs>\n");
+
+        for (PardefInfo pardefInfo : pardefs.values()) {
+            writeParadigmDefinitionNew(writer, pardefInfo);
+        }
+
+        writer.write("  </pardefs>\n\n");
+    }
+
+    /**
+     * NEW: Writes a single pardef with stem/suffix split and variant support.
+     */
+    private void writeParadigmDefinitionNew(FileWriter writer, PardefInfo pardefInfo) throws IOException {
+        writer.write("    <pardef n=\"" + escapeXml(pardefInfo.pardefName) + "\">\n");
+
+        SpecificParadigm paradigm = pardefInfo.paradigm;
+        String paradigmLemma = paradigm.getLemma().getLemmaString();
+        List<WordForm> wordForms = paradigm.getWordForms();
+        List<FeatureStructureEntry> fsEntries = new ArrayList<>(pardefInfo.featureStructures.getEntries());
+
+        int formCount = Math.min(wordForms.size(), fsEntries.size());
+
+        for (int i = 0; i < formCount; i++) {
+            WordForm wf = wordForms.get(i);
+            FeatureStructureEntry fsEntry = fsEntries.get(i);
+            FeatureStructure fs = fsEntry.getFeatureStructure();
+
+            // Handle variants - generate multiple <e> entries for each variant
+            for (String variant : wf.getVariants()) {
+                // Extract suffix from this variant
+                StemExtractionStrategy.StemAffixResult extraction =
+                    stemExtractor.extract(paradigmLemma, variant);
+
+                writer.write("      <e>\n");
+                writer.write("        <p>\n");
+
+                // <l> = surface form suffix (for ANALYSIS)
+                writer.write("          <l>" + escapeXml(extraction.getInflectedSuffix()) + "</l>\n");
+
+                // <r> = lemma_suffix + morphological tags (for GENERATION)
+                writer.write("          <r>" + escapeXml(pardefInfo.lemmaSuffix));
+                writer.write(generateTagsFromFeatureStructure(fs));
+                writer.write("</r>\n");
+
+                writer.write("        </p>\n");
+                writer.write("      </e>\n");
+            }
+        }
+
+        writer.write("    </pardef>\n");
+    }
+
+    /**
+     * OLD method - kept for reference, can be removed after testing.
+     */
     private void writeParadigmDefinitions(FileWriter writer, List<ParadigmCategory> categories,
                                          ParadigmCategoryToFSSetMap fsMap) throws IOException {
         writer.write("  <pardefs>\n");
@@ -362,6 +531,63 @@ public class ApertiumMonodixWriter implements DictionaryWriter {
         }
     }
 
+    /**
+     * NEW: Writes main section with only stems in <i> tags and proper pardef references.
+     */
+    private void writeMainSectionNew(FileWriter writer, List<LexiconEntry> lexicon,
+                                     Map<String, PardefInfo> pardefs) throws IOException {
+        writer.write("  <section id=\"main\" type=\"standard\">\n");
+
+        for (LexiconEntry entry : lexicon) {
+            String lemma = entry.getLemma();
+            String categoryName = entry.getParadigmCategory();
+
+            // Find the corresponding pardef for this entry
+            // We need to extract stem the same way we did during pardef generation
+            SpecificParadigm paradigm = pardefs.values().stream()
+                .filter(p -> p.categoryName.equals(categoryName))
+                .map(p -> p.paradigm)
+                .findFirst()
+                .orElse(null);
+
+            if (paradigm == null) {
+                System.out.println("⚠ Warning: No pardef found for entry " + lemma + " in category " + categoryName);
+                continue;
+            }
+
+            // Extract stem by finding longest common prefix of lemma and ALL inflected forms
+            String commonStem = lemma;
+            for (WordForm wf : paradigm.getWordForms()) {
+                for (String variant : wf.getVariants()) {
+                    int lcp = findLCP(commonStem, variant);
+                    commonStem = commonStem.substring(0, lcp);
+                }
+            }
+
+            String entryStem = commonStem;
+            String entryLemmaSuffix = lemma.substring(commonStem.length());
+
+            // Generate pardef name for this entry (must match the format used in generation)
+            String pardefName;
+            if (entryLemmaSuffix.isEmpty()) {
+                pardefName = entryStem + "__" + categoryName;
+            } else {
+                pardefName = entryStem + "/" + entryLemmaSuffix + "__" + categoryName;
+            }
+
+            // Write lexicon entry
+            writer.write("    <e lm=\"" + escapeXml(lemma) + "\">\n");
+            writer.write("      <i>" + escapeXml(entryStem) + "</i>\n");  // Only stem!
+            writer.write("      <par n=\"" + escapeXml(pardefName) + "\"/>\n");
+            writer.write("    </e>\n");
+        }
+
+        writer.write("  </section>\n");
+    }
+
+    /**
+     * OLD method - kept for reference, can be removed after testing.
+     */
     private void writeMainSection(FileWriter writer, List<LexiconEntry> lexicon) throws IOException {
         writer.write("  <section id=\"main\" type=\"standard\">\n");
 
