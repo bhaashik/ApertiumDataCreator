@@ -36,8 +36,10 @@ public class ApertiumCreatorMain {
         } else {
             // Default paths relative to project root
             projectRoot = new File(".");
-            paradigmDir = new File(projectRoot, "input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/bhojpuri/morphological-paradigms-and-lexicon/paradigms");
-            lexiconFile = new File(projectRoot, "input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/bhojpuri/morphological-paradigms-and-lexicon/lexicon/dict.final.txt");
+            paradigmDir = new File(projectRoot, "input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/bhojpuri/paradigms");
+            lexiconFile = new File(projectRoot, "input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/bhojpuri/lexicon.txt");
+            // paradigmDir = new File(projectRoot, "input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/bhojpuri/morphological-paradigms-and-lexicon/paradigms");
+            // lexiconFile = new File(projectRoot, "input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/bhojpuri/morphological-paradigms-and-lexicon/lexicon/dict.final.txt");
             featureStructureSource = projectRoot; // Will look for ApertiumDataCreator-part-*.md files
             outputDix = new File(projectRoot, "output/bhojpuri-monodix.dix");
 

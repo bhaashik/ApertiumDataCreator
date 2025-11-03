@@ -1,0 +1,3 @@
+added the necessory jar files 
+javac -d bin -cp "$(find lib -name '*.jar' | grep -v 'sources' | paste -sd ':' -)" $(find src -name '*.java')
+corrected 'create-magahi-monodix.sh' 

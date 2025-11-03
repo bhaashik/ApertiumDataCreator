@@ -5,7 +5,7 @@
 echo "Creating Magahi monodix dictionary..."
 
 INPUT_DIR="input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/magahi"
-OUTPUT_FILE="magahi-monodix.dix"
+OUTPUT_FILE="output/magahi-monodix.dix"
 PARADIGM_DIR="$INPUT_DIR/paradigms"
 LEXICON_FILE="$INPUT_DIR/lexicon.txt"
 FEATURE_FILE="input/B_M_M_Word-generation-ver-1.9.0.formatted.txt"
@@ -18,15 +18,16 @@ if [ ! -d "$INPUT_DIR" ]; then
 fi
 
 # Run the Apertium creator
-java -cp "bin:lib/sanscript-classes" bhaashik.morph.ApertiumCreatorMain \
-    --language Magahi \
-    --paradigm-dir "$PARADIGM_DIR" \
-    --lexicon-file "$LEXICON_FILE" \
-    --feature-file "$FEATURE_FILE" \
+java -cp "bin:lib/*" bhaashik.morph.ApertiumCreatorMain \
+    "$PARADIGM_DIR" \
+    "$LEXICON_FILE" \
+    "$FEATURE_FILE" \
+    "$OUTPUT_FILE" \
+    "Magahi"\
     --tam-file "$TAM_FILE" \
-    --output "$OUTPUT_FILE" \
-    --script Devanagari \
+        --script Devanagari \
     --vibhakti-mode ATTACHED
+
 
 if [ $? -eq 0 ]; then
     echo "Successfully created $OUTPUT_FILE"
