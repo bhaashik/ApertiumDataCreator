@@ -32,18 +32,38 @@ javac -d bin -cp "lib/sanscript-classes" src/bhaashik/morph/**/*.java
 ### Generate Monodix Files
 
 ```bash
-# Generate all three language dictionaries
+# Generate all three language dictionaries (WX notation only)
 bash create-all-monodix.sh
 
-# Or generate individually
+# Or generate individually (WX notation)
 bash create-bhojpuri-monodix.sh
 bash create-maithili-monodix.sh
 bash create-magahi-monodix.sh
+
+# Generate BOTH WX and Devanagari versions (recommended for Apertium)
+bash create-bhojpuri-monodix-both.sh
 
 # On Windows
 create-all-monodix.bat
 create-bhojpuri-monodix.bat
 ```
+
+### Script Conversion (WX ↔ Devanagari)
+
+Following Apertium best practices for Indic languages, this project generates **both WX and native script** versions of monodix files:
+
+```bash
+# Convert any WX monodix file to Devanagari
+java -cp "bin:lib/sanscript-java_2.12-0.4.jar" bhaashik.morph.util.MonodixScriptConverter \
+    input.dix output.dix Devanagari
+
+# Supported scripts: Devanagari, Bengali, Gujarati, Gurmukhi, Kannada, Malayalam, Oriya, Tamil, Telugu
+```
+
+**Why both versions?**
+- **WX (ASCII)**: Easier for version control, editing, and collaboration
+- **Native script**: Required for end-users and standard Apertium tools
+- Generated files have identical FST functionality
 
 ### Run Tests
 

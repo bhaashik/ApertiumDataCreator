@@ -179,18 +179,41 @@ public class ApertiumMonodixWriter implements DictionaryWriter {
             SpecificParadigm paradigm = category.getParadigms().get(0);
             String paradigmLemma = paradigm.getLemma().getLemmaString();
 
-            // Extract stem by finding longest common prefix of lemma and ALL inflected forms
-            String commonStem = lemma;
-            for (WordForm wf : paradigm.getWordForms()) {
-                for (String variant : wf.getVariants()) {
-                    // Find LCP between current common stem and this variant
-                    int lcp = findLCP(commonStem, variant);
-                    commonStem = commonStem.substring(0, lcp);
-                }
-            }
+            // Extract stem by finding longest common prefix of lexicon lemma and paradigm lemma
+            // This handles cases where the lexicon lemma should follow the same morphological
+            // pattern as the paradigm template
+            int lemmaLCP = findLCP(lemma, paradigmLemma);
 
-            String entryStem = commonStem;
-            String entryLemmaSuffix = lemma.substring(commonStem.length());
+            String entryStem;
+            String entryLemmaSuffix;
+
+            // If there's meaningful overlap (at least 2 characters) between lexicon and paradigm lemmas,
+            // use paradigm's stem-suffix ratio. Otherwise, treat lexicon lemma as non-decomposable.
+            if (lemmaLCP >= 2 && lemmaLCP < Math.min(lemma.length(), paradigmLemma.length())) {
+                // Calculate paradigm's stem from its own lemma and inflected forms
+                String paradStem = paradigmLemma;
+                for (WordForm wf : paradigm.getWordForms()) {
+                    for (String variant : wf.getVariants()) {
+                        int lcp = findLCP(paradStem, variant);
+                        paradStem = paradStem.substring(0, lcp);
+                    }
+                }
+
+                // Apply similar stem-suffix split to lexicon lemma
+                int paradStemLen = paradStem.length();
+                if (paradStemLen > 0 && paradStemLen < lemma.length()) {
+                    entryStem = lemma.substring(0, paradStemLen);
+                    entryLemmaSuffix = lemma.substring(paradStemLen);
+                } else {
+                    // Paradigm stem extraction failed, use full lemma
+                    entryStem = lemma;
+                    entryLemmaSuffix = "";
+                }
+            } else {
+                // No morphological relationship - use full lemma as stem
+                entryStem = lemma;
+                entryLemmaSuffix = "";
+            }
 
             // Generate unique pardef name for this entry
             String pardefName;
@@ -542,43 +565,27 @@ public class ApertiumMonodixWriter implements DictionaryWriter {
             String lemma = entry.getLemma();
             String categoryName = entry.getParadigmCategory();
 
-            // Find the corresponding pardef for this entry
-            // We need to extract stem the same way we did during pardef generation
-            SpecificParadigm paradigm = pardefs.values().stream()
-                .filter(p -> p.categoryName.equals(categoryName))
-                .map(p -> p.paradigm)
-                .findFirst()
-                .orElse(null);
+            // Look up the pardef info to get the correct stem and suffix
+            // Try both with and without suffix separator
+            PardefInfo pardefInfo = pardefs.get(lemma + "__" + categoryName);
+            if (pardefInfo == null) {
+                // Try to find by category and stem prefix
+                pardefInfo = pardefs.values().stream()
+                    .filter(p -> p.categoryName.equals(categoryName) &&
+                                 lemma.startsWith(p.stem))
+                    .findFirst()
+                    .orElse(null);
+            }
 
-            if (paradigm == null) {
+            if (pardefInfo == null) {
                 System.out.println("⚠ Warning: No pardef found for entry " + lemma + " in category " + categoryName);
                 continue;
             }
 
-            // Extract stem by finding longest common prefix of lemma and ALL inflected forms
-            String commonStem = lemma;
-            for (WordForm wf : paradigm.getWordForms()) {
-                for (String variant : wf.getVariants()) {
-                    int lcp = findLCP(commonStem, variant);
-                    commonStem = commonStem.substring(0, lcp);
-                }
-            }
-
-            String entryStem = commonStem;
-            String entryLemmaSuffix = lemma.substring(commonStem.length());
-
-            // Generate pardef name for this entry (must match the format used in generation)
-            String pardefName;
-            if (entryLemmaSuffix.isEmpty()) {
-                pardefName = entryStem + "__" + categoryName;
-            } else {
-                pardefName = entryStem + "/" + entryLemmaSuffix + "__" + categoryName;
-            }
-
-            // Write lexicon entry
+            // Write lexicon entry using the pardef's stem information
             writer.write("    <e lm=\"" + escapeXml(lemma) + "\">\n");
-            writer.write("      <i>" + escapeXml(entryStem) + "</i>\n");  // Only stem!
-            writer.write("      <par n=\"" + escapeXml(pardefName) + "\"/>\n");
+            writer.write("      <i>" + escapeXml(pardefInfo.stem) + "</i>\n");
+            writer.write("      <par n=\"" + escapeXml(pardefInfo.pardefName) + "\"/>\n");
             writer.write("    </e>\n");
         }
 
