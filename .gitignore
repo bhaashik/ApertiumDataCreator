@@ -1,3 +1,8 @@
+### Project Specific ###
+excluded/
+output-tmp/
+source-files-06-05-25/
+
 ### IntelliJ IDEA ###
 out/
 !**/src/main/**/out/

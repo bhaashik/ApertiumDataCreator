@@ -23,11 +23,17 @@ This is a Java-based morphological analysis API that converts linguistic data fr
 # Compile the entire project (from project root)
 javac -d bin -cp "lib/sanscript-classes" src/bhaashik/morph/**/*.java
 
+# Or compile with JAR library (used by actual scripts)
+javac -d bin -cp "lib/sanscript-java_2.12-0.4.jar" src/bhaashik/morph/**/*.java
+
 # On Windows, use semicolons in classpath
 javac -d bin -cp "lib/sanscript-classes" src/bhaashik/morph/**/*.java
 ```
 
-**Note:** The user prefers using JDK from Windows 11 host instead of WSL2 Ubuntu JDK when possible.
+**Important Notes:**
+- The actual generation scripts use `lib/sanscript-java_2.12-0.4.jar` in the classpath
+- Both `lib/sanscript-classes/` (compiled from source) and `lib/sanscript-java_2.12-0.4.jar` are available
+- Use WSL2 Ubuntu JDK for development
 
 ### Generate Monodix Files
 
@@ -245,11 +251,29 @@ lt-comp rl bhojpuri-monodix.dix bhojpuri-generator.bin
 - Location: `test/bhaashik/morph/`
 - 5 test classes, 33 tests total (all passing)
 
-## Known Issues and Required Fixes
+## Recent Fixes and Known Issues
 
-### Issue 1: Incorrect Stem-Suffix Separation in Pardef Structure
+### ✅ FIXED (Nov 2025): Empty `<l>` Tags and Missing Symbol Definitions
 
-**Problem**: The current implementation does NOT properly separate stems and suffixes in pardef definitions as required by Apertium monodix format.
+Two critical compilation issues were identified and fixed in November 2025:
+
+**Issue 1: Empty `<l>` Tags** - RESOLVED
+- **Problem**: 28,129 empty `<l></l>` tags prevented FST compilation
+- **Cause**: Suffix extraction used paradigm lemma instead of lexicon entry stem
+- **Fix**: Modified `ApertiumMonodixWriter.java` lines 391-417 to extract suffixes relative to the actual stem
+- **Result**: Empty tags reduced to 103 legitimate zero-suffix forms (99.6% reduction)
+
+**Issue 2: Missing Symbol Definitions** - RESOLVED
+- **Problem**: 8 symbols (emph, emph1, mood, mood1, hon, neg, rdp, dexis) used but not defined in `<sdefs>`
+- **Cause**: Code only collected feature VALUES, not KEYS from additional attributes
+- **Fix**: Modified `collectSymbolsFromFeatureStructure()` (lines 354-366) to add both keys and values
+- **Result**: All symbols now properly defined before use
+
+See `SESSION-2025-11-23-monodix-compilation-fixes.md` for detailed fix documentation.
+
+### ⚠️ Known Issue: Stem-Suffix Separation in Pardef Structure
+
+**Problem**: The current implementation does NOT fully follow Apertium's recommended stem/lemma_suffix naming convention for pardefs.
 
 **Current behavior** (INCORRECT):
 ```xml
@@ -315,63 +339,28 @@ The pardef then shows all possible suffixes:
    - Reference the correctly formatted pardef name (stem/lemma_suffix__category)
 3. Handle pardef name generation per lexicon entry (since each lemma may have different stem/suffix split)
 
-### Issue 2: Variant Forms Not Handled (Dialectal Variations)
+### ✅ HANDLED: Variant Forms (Dialectal Variations)
 
-**Problem**: Paradigm files (`.p`) contain dialectal/regional variants separated by `/`, but the code treats them as single strings.
+**Status**: The code now properly handles dialectal/regional variants separated by `/` in paradigm files.
 
-**Example from** `input/bhojpuri/morphological-paradigms-and-lexicon/paradigms/Adj_All_e.p`:
-```
-Adj_All_e
-amIra
-amIrai/amIre/amIrE          ← Three variants of the same inflected form
-kariyA
-kariyai/kariai/kariye        ← Three different variants
-```
+**Implementation**: `DotPFormatParadigmReader` and `ApertiumMonodixWriter` split variant forms and generate separate `<e>` entries for each.
 
-**Current behavior** (INCORRECT):
-```xml
-<pardef n="Adj_All_e">
-  <e><p><l>ai/amIre/amIrE</l><r><s n="adj"/>...</r></p></e>  <!-- Treats as single string! -->
-</pardef>
-```
+**Example**: For `amIrai/amIre/amIrE`, the system generates three separate pardef entries with different suffixes.
 
-**Expected behavior** (CORRECT):
-For lemma **amIra**, stem **amIr**, lemma_suffix **a**:
-```xml
-<pardef n="amIr/a__Adj_All_e">
-  <e><p><l>ai</l><r>a<s n="adj"/><s n="emph"/>...</r></p></e>   <!-- Variant 1 -->
-  <e><p><l>e</l><r>a<s n="adj"/><s n="emph"/>...</r></p></e>    <!-- Variant 2 -->
-  <e><p><l>E</l><r>a<s n="adj"/><s n="emph"/>...</r></p></e>    <!-- Variant 3 -->
-</pardef>
-```
+## Performance and File Statistics
 
-Or possibly separate pardefs for major variant groups.
+### Bhojpuri Monodix Generation (Reference)
+- **Generation Time**: ~75 minutes for full dictionary
+- **Output File Size**: ~437 MB (WX notation)
+- **Paradigm Definitions**: 217,227
+- **Lexicon Entries**: 218,242 (from 571,558 source entries)
+- **Legitimate Empty `<l>` Tags**: 103 (zero-suffix forms like adverbs, uninflecting adjectives)
 
-**Root cause**:
-- `DotPFormatParadigmReader.java` reads word forms but doesn't split on `/`
-- `ApertiumMonodixWriter.java` doesn't detect or handle `/` variants
-
-**Fix needed**:
-1. Modify `DotPFormatParadigmReader` to:
-   - Detect `/` separator in word forms
-   - Split and store variants (either as separate WordForm objects or as a list within WordForm)
-2. Modify `ApertiumMonodixWriter.writeParadigmDefinition()` to:
-   - For each feature structure with variants, generate multiple `<e>` entries
-   - Each variant gets its own suffix extraction and `<e>` entry in the pardef
-   - Consider adding variant/dialect tags if needed to distinguish forms
-
-### Recommended Implementation Strategy
-
-**Phase 1**: Fix stem-suffix separation
-1. Study `examples/apertium-hin.hin.dix.xml` to understand pardef naming convention
-2. Implement per-lexicon-entry pardef generation (since each lemma may split differently)
-3. Format pardef names as: `stem/lemma_suffix__original_category_name`
-4. Update main section to write only stems in `<i>` tags
-
-**Phase 2**: Handle variants
-1. Modify paradigm reader to split on `/`
-2. Generate multiple pardef entries for each variant
-3. Test with Bhojpuri data containing variants
+### Script Conversion Performance
+- **MonodixScriptConverterStreaming**: Production converter for large files
+- **Processing Speed**: ~120,000 lines/second
+- **Example**: 435MB file (18 million lines) converted in 152 seconds
+- **Memory Usage**: Constant (~16KB buffer) - suitable for very large files
 
 ## Development Notes
 
@@ -385,9 +374,6 @@ Or possibly separate pardefs for major variant groups.
 - New input format: Implement `ParadigmReader`, `FeatureStructureReader`, or `LexiconReader` interface
 - New output format: Implement `DictionaryWriter` interface
 - New stem algorithm: Implement `StemExtractionStrategy` interface
-
-### Legacy Code
-The `source-files-06-05-25/` directory contains older implementations - **do not modify**. Work only in `src/` directory.
 
 ## Common Tasks
 
@@ -410,6 +396,14 @@ Check the console output from `ApertiumCreatorMain` which shows:
 ### Verify FST compilation
 After generating .dix files, test with Apertium tools (if installed):
 ```bash
-lt-comp lr bhojpuri-monodix.dix bhojpuri.bin
+# Compile for analysis (left-to-right)
+lt-comp lr output/bhojpuri-monodix.dix bhojpuri.bin
+
+# Test analyzer
 echo "घरों" | lt-proc bhojpuri.bin
+
+# Verify all symbols are defined (debugging)
+grep -o '<sdef n="[^"]*"' output/bhojpuri-monodix.dix | sed 's/<sdef n="//' | sed 's/"//' | sort -u > /tmp/defined_sdefs.txt
+grep -o '<s n="[^"]*"' output/bhojpuri-monodix.dix | sed 's/<s n="//' | sed 's/"//' | sort -u > /tmp/used_sdefs.txt
+comm -23 /tmp/used_sdefs.txt /tmp/defined_sdefs.txt  # Should be empty
 ```

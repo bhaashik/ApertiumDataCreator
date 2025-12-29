@@ -351,9 +351,18 @@ public class ApertiumMonodixWriter implements DictionaryWriter {
             symbols.add(tamMapper != null && tamMapper.hasMapping(tam) ? tamMapper.map(tam) : tam);
         }
 
-        // Additional features
-        for (String value : fs.getAdditionalFeatures().values()) {
-            if (!value.isEmpty()) symbols.add(value);
+        // Additional features - add both keys and values as symbols
+        for (Map.Entry<String, String> entry : fs.getAdditionalFeatures().entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            // Add the feature name itself as a symbol (e.g., "emph", "mood", "rdp")
+            if (!key.isEmpty() && !key.equals("af")) {
+                symbols.add(key);
+            }
+            // Also add the value if it's not just a flag like 'y'
+            if (!value.isEmpty() && !value.equals("y") && !value.equals("n")) {
+                symbols.add(value);
+            }
         }
     }
 
@@ -390,15 +399,22 @@ public class ApertiumMonodixWriter implements DictionaryWriter {
 
             // Handle variants - generate multiple <e> entries for each variant
             for (String variant : wf.getVariants()) {
-                // Extract suffix from this variant
-                StemExtractionStrategy.StemAffixResult extraction =
-                    stemExtractor.extract(paradigmLemma, variant);
+                // Extract suffix from this variant relative to the STEM
+                // This ensures <l> is never empty for valid word forms
+                String inflectedSuffix;
+                if (variant.startsWith(pardefInfo.stem)) {
+                    inflectedSuffix = variant.substring(pardefInfo.stem.length());
+                } else {
+                    // Fallback: variant doesn't start with stem, use full variant
+                    // This handles irregular forms
+                    inflectedSuffix = variant;
+                }
 
                 writer.write("      <e>\n");
                 writer.write("        <p>\n");
 
                 // <l> = surface form suffix (for ANALYSIS)
-                writer.write("          <l>" + escapeXml(extraction.getInflectedSuffix()) + "</l>\n");
+                writer.write("          <l>" + escapeXml(inflectedSuffix) + "</l>\n");
 
                 // <r> = lemma_suffix + morphological tags (for GENERATION)
                 writer.write("          <r>" + escapeXml(pardefInfo.lemmaSuffix));

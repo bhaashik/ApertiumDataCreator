@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(find:*)",
-      "Bash(javac:*)"
+      "Bash(javac:*)",
+      "Bash(comm -23:*)",
+      "Bash(echo:*)",
+      "Bash(bash:*)",
+      "Bash(lsof:*)",
+      "Bash(ps:*)",
+      "Bash(lt-comp:*)",
+      "Bash(cat:*)",
+      "Bash(xargs javac -d bin -cp \"lib/sanscript-java_2.12-0.4.jar\")",
+      "Bash(xargs javac -d bin -cp \"lib/*:lib/sanscript-classes\")"
     ],
     "deny": [],
     "ask": []
