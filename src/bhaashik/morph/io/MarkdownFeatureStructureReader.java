@@ -23,16 +23,34 @@ public class MarkdownFeatureStructureReader implements FeatureStructureReader {
         ParadigmCategoryToFSSetMap map = new ParadigmCategoryToFSSetMap();
 
         if (source.isDirectory()) {
-            // Read from multiple parts (1-13)
-            for (int i = 1; i <= 13; i++) {
-                File partFile = new File(source, "ApertiumDataCreator-part-" + i + ".md");
-                if (partFile.exists()) {
-                    System.out.println("Reading feature structures from: " + partFile.getName());
-                    readSingleFile(partFile, map);
+            // First try the structured markdown file
+            File structuredFile = new File(source, "input/B_M_M_Word-generation-ver-1.9.0.formatted-structured-for-csv-for-dix-generation.md");
+            if (structuredFile.exists()) {
+                System.out.println("Reading feature structures from: " + structuredFile.getName());
+                readStructuredMarkdownFile(structuredFile, map);
+            } else {
+                // Fallback to formatted text file
+                File formattedFile = new File(source, "B_M_M_Word-generation-ver-1.9.0.formatted.txt");
+                if (formattedFile.exists()) {
+                    System.out.println("Reading feature structures from: " + formattedFile.getName());
+                    readSingleFile(formattedFile, map);
+                } else {
+                    // Fallback to reading from multiple parts (1-13)
+                    for (int i = 1; i <= 13; i++) {
+                        File partFile = new File(source, "ApertiumDataCreator-part-" + i + ".md");
+                        if (partFile.exists()) {
+                            System.out.println("Reading feature structures from: " + partFile.getName());
+                            readSingleFile(partFile, map);
+                        }
+                    }
                 }
             }
         } else if (source.isFile()) {
-            readSingleFile(source, map);
+            if (source.getName().contains("structured")) {
+                readStructuredMarkdownFile(source, map);
+            } else {
+                readSingleFile(source, map);
+            }
         } else {
             throw new IOException("Source not found: " + source);
         }
@@ -41,56 +59,132 @@ public class MarkdownFeatureStructureReader implements FeatureStructureReader {
         return map;
     }
 
-    private void readSingleFile(File file, ParadigmCategoryToFSSetMap map) throws IOException {
+    /**
+     * Read the structured markdown file with escaped markup
+     */
+    private void readStructuredMarkdownFile(File file, ParadigmCategoryToFSSetMap map) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
-            String currentParCatName = null;
+            String currentCategoryName = null;
             ParCatFeatureStructures currentParCatFS = null;
-            List<FeatureStructure> pendingFSList = new ArrayList<>();
+            FeatureStructure pendingFS = null;
 
             while ((line = reader.readLine()) != null) {
                 String trimmed = line.trim();
 
-                if (trimmed.isEmpty()) {
+                // Skip empty lines, format description, and TAM dictionary section
+                if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.contains("[[[TAM Dict")) {
                     continue;
                 }
 
-                // Detect paradigm category name
-                if (isParadigmCategoryLine(trimmed)) {
+                // Detect paradigm category name: \[\[CategoryName\]\]
+                if (trimmed.startsWith("\\[\\[") && trimmed.endsWith("\\]\\]")) {
                     // Save previous category
-                    if (currentParCatName != null && currentParCatFS != null) {
-                        map.addParadigmCatogory(currentParCatName, currentParCatFS);
+                    if (currentCategoryName != null && currentParCatFS != null && currentParCatFS.getEntries().size() > 0) {
+                        map.addParadigmCatogory(currentCategoryName, currentParCatFS);
                     }
 
-                    currentParCatName = trimmed;
+                    // Extract category name
+                    currentCategoryName = trimmed.substring(4, trimmed.length() - 4).replace("\\_", "_");
                     currentParCatFS = new ParCatFeatureStructures();
-                    pendingFSList.clear();
+                    pendingFS = null;
                     continue;
                 }
 
-                // Parse feature structure
-                if (trimmed.startsWith("<fs")) {
-                    FeatureStructure fs = parseFeatureStructure(trimmed);
-                    if (fs != null) {
-                        pendingFSList.add(fs);
-                    }
+                // Parse feature structure: \<fs af='...'\>
+                if (trimmed.startsWith("\\<fs") && currentParCatFS != null) {
+                    // Unescape the XML: \<fs af='...'\> -> <fs af='...'>
+                    String unescaped = trimmed.replace("\\<", "<").replace("\\>", ">").replace("\\_", "_");
+                    pendingFS = parseFeatureStructure(unescaped);
                     continue;
                 }
 
-                // Hindi surface form (Devanagari)
-                if (isDevanagariText(trimmed) && !pendingFSList.isEmpty() && currentParCatFS != null) {
-                    for (FeatureStructure fs : pendingFSList) {
-                        FeatureStructureEntry entry = new FeatureStructureEntry(fs, fs.getLemma(), trimmed);
-                        currentParCatFS.addEntry(entry);
-                    }
-                    pendingFSList.clear();
+                // Generated Hindi surface form: \>\>form
+                if (trimmed.startsWith("\\>\\>") && pendingFS != null && currentParCatFS != null) {
+                    String surfaceForm = trimmed.substring(4).replace("\\_", "_");
+                    FeatureStructureEntry entry = new FeatureStructureEntry(pendingFS, pendingFS.getLemma(), surfaceForm);
+                    currentParCatFS.addEntry(entry);
+                    pendingFS = null;
                 }
             }
 
             // Save last category
-            if (currentParCatName != null && currentParCatFS != null) {
-                map.addParadigmCatogory(currentParCatName, currentParCatFS);
+            if (currentCategoryName != null && currentParCatFS != null && currentParCatFS.getEntries().size() > 0) {
+                map.addParadigmCatogory(currentCategoryName, currentParCatFS);
             }
+        }
+    }
+
+    private void readSingleFile(File file, ParadigmCategoryToFSSetMap map) throws IOException {
+        // Read entire file content (handles continuous line format)
+        StringBuilder contentBuilder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                contentBuilder.append(line).append("\n");
+            }
+        }
+        String content = contentBuilder.toString();
+
+        // Pattern to match paradigm category names (either [[Name]] or standalone Name)
+        // Matches: [[Name]] or a word boundary followed by capitalized paradigm name
+        Pattern categoryPattern = Pattern.compile("(?:\\[\\[([A-Za-z][A-Za-z0-9_]*)\\]\\]|(?:^|[>\\s])([A-Z][A-Za-z0-9_]+)(?=<fs|[\\n\\s]))");
+        Matcher categoryMatcher = categoryPattern.matcher(content);
+
+        int lastEnd = 0;
+        String currentCategoryName = null;
+        int currentStart = 0;
+
+        while (categoryMatcher.find()) {
+            // Extract category name from either group 1 ([[Name]]) or group 2 (Name)
+            String categoryName = categoryMatcher.group(1) != null ? categoryMatcher.group(1) : categoryMatcher.group(2);
+
+            // Skip if it looks like explanation text
+            if (categoryName != null && !isExplanationText(categoryName)) {
+                // Process previous category section if exists
+                if (currentCategoryName != null) {
+                    String categoryContent = content.substring(currentStart, categoryMatcher.start());
+                    processCategory(currentCategoryName, categoryContent, map);
+                }
+
+                // Start new category
+                currentCategoryName = categoryName;
+                currentStart = categoryMatcher.end();
+                lastEnd = categoryMatcher.end();
+            }
+        }
+
+        // Process last category
+        if (currentCategoryName != null && lastEnd < content.length()) {
+            String categoryContent = content.substring(currentStart);
+            processCategory(currentCategoryName, categoryContent, map);
+        }
+    }
+
+    private boolean isExplanationText(String text) {
+        // Filter out common explanation phrases that might match the pattern
+        return text.matches(".*(Root|Step|Direct|Word|Generation|Through|Inverted|Morph|Add|Seperate|Feature|Analyser|No).*");
+    }
+
+    private void processCategory(String categoryName, String content, ParadigmCategoryToFSSetMap map) {
+        ParCatFeatureStructures parCatFS = new ParCatFeatureStructures();
+
+        // Find all feature structures in this category section
+        Matcher fsMatcher = FS_PATTERN.matcher(content);
+        int fsCount = 0;
+
+        while (fsMatcher.find()) {
+            FeatureStructure fs = parseFeatureStructure(fsMatcher.group(0));
+            if (fs != null) {
+                // Create entry with surface form (we don't extract actual surface forms from this format)
+                FeatureStructureEntry entry = new FeatureStructureEntry(fs, fs.getLemma(), "");
+                parCatFS.addEntry(entry);
+                fsCount++;
+            }
+        }
+
+        if (fsCount > 0) {
+            map.addParadigmCatogory(categoryName, parCatFS);
         }
     }
 

@@ -1,0 +1,21 @@
+https://wiki.apertium.org/wiki/Monodix_basics
+
+https://wiki.apertium.org/wiki/Monodix
+
+apertium monodox format description
+In Apertium, "monodox" is a colloquial or shorthand term for a monolingual dictionary (often referred to formally as a monodix). It is an XML-based format used to define the morphological data of a single language, including how words inflect and their grammatical properties.
+Key Characteristics of the Format
+XML Structure: Files typically use the extension .dix (or .metadix for parameterized versions).
+Morphological Analysis & Generation: It stores lemmas (base forms) and their inflectional paradigms. This allows the Apertium engine to both analyze a surface form (e.g., "cats" → "cat" + plural) and generate a surface form from tags.
+Entry Types:
+Sections: Dictionaries are divided into sections such as <section id="main" type="standard"> for general vocabulary.
+Paradigms: Defined in <pardefs>, these reusable templates handle common inflection patterns (e.g., standard noun endings).
+Entries: Individual words are defined in <e> tags, often linking a lemma to a specific paradigm.
+Tagging: It uses a specific set of symbols (e.g., <n>, <pl>, <vblex>) to represent grammatical categories like noun, plural, or lexical verb.
+Role in the Translation Pipeline
+The monodox is compiled into a Finite State Transducer (FST) using the lt-toolbox (specifically lt-comp). This compiled version is used in the first stage of translation for morphological analysis and in the final stage for morphological generation.
+For detailed technical documentation and schema examples, refer to the Apertium Wiki's Monodix basics.
+
+
+
+

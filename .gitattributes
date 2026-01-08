@@ -1,1 +1,4 @@
 bhojpuri-monodix.dix filter=lfs diff=lfs merge=lfs -text
+sample-output.dix filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.dix filter=lfs diff=lfs merge=lfs -text

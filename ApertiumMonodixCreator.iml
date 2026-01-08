@@ -9,10 +9,12 @@
       <excludeFolder url="file://$MODULE_DIR$/output-tmp" />
       <excludeFolder url="file://$MODULE_DIR$/source-files-06-05-25" />
     </content>
-    <orderEntry type="jdk" jdkName="ApertiumDataCreator" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="25" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="fasterxml.jackson.core.databind" level="project" />
     <orderEntry type="library" name="fasterxml.jackson.dataformat.avro" level="project" />
     <orderEntry type="library" name="fasterxml.jackson.dataformat.xml" level="project" />
+    <orderEntry type="library" name="avro-1.8.2" level="project" />
+    <orderEntry type="library" name="sanscript-classes" level="project" />
   </component>
 </module>

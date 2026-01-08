@@ -78,9 +78,31 @@ public class MonodixScriptConverterStreaming {
                 "<!-- Script: " + targetScript + " (converted from WX) -->");
         }
 
+        // Skip symbol definitions and references (should remain ASCII)
+        if (line.contains("<s n=") || line.contains("<sdef n=")) {
+            // Don't convert symbol names
+            return line;
+        }
+
+        // Convert pardef and par references (including names)
+        if (line.contains("<pardef n=") || line.contains("<par n=")) {
+            // Convert pardef/par names AND content
+            line = convertAttributeInLine(line, "n", targetScript);
+            line = convertAttributeInLine(line, "lm", targetScript);
+            line = convertTagInLine(line, "i", targetScript);
+            line = convertTagInLine(line, "l", targetScript);
+            line = convertRTagInLine(line, targetScript);
+            return line;
+        }
+
+        // Convert alphabet content
+        if (line.contains("<alphabet>")) {
+            line = convertTagInLine(line, "alphabet", targetScript);
+            return line;
+        }
+
         // Convert attributes and tag content
         line = convertAttributeInLine(line, "lm", targetScript);
-        line = convertAttributeInLine(line, "n", targetScript);  // For pardef names
         line = convertTagInLine(line, "i", targetScript);
         line = convertTagInLine(line, "l", targetScript);
         line = convertRTagInLine(line, targetScript);

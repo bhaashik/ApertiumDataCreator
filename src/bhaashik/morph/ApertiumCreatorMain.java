@@ -102,7 +102,7 @@ public class ApertiumCreatorMain {
             // Configure writer
             writer.setStemExtractionStrategy(new LongestCommonPrefixStrategy());
             writer.setTAMMapper(tamMapper);
-            writer.setScriptName("Devanagari");
+            writer.setScriptName("WX");
             writer.setVibhaktiHandling(ApertiumMonodixWriter.VibhaktiHandling.ATTACHED);
             writer.setIncludeAlphabet(true);
 

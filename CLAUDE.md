@@ -15,7 +15,23 @@ This is a Java-based morphological analysis API that converts linguistic data fr
 
 ### Prerequisites
 - Java 8+ (JDK required for compilation)
-- Sanscript library for transliteration (included in `lib/sanscript-classes/`)
+- Sanscript library for transliteration (included in `lib/sanscript-classes/` and `lib/sanscript-java_2.12-0.4.jar`)
+
+### JDK Options for WSL2
+
+Two JDK options are available when working in WSL2:
+
+1. **WSL2 Ubuntu JDK** (recommended for development):
+   ```bash
+   # Currently using JDK 24.0.2 at /home/bhaashik/exec/jdk-24.0.2/bin/java
+   javac -d bin -cp "lib/sanscript-classes" src/bhaashik/morph/**/*.java
+   ```
+
+2. **Windows JDK** (accessible from WSL2):
+   ```bash
+   # Windows JDK-25 available at /mnt/c/Program Files/Java/jdk-25/
+   /mnt/c/Program\ Files/Java/jdk-25/bin/javac.exe -d bin -cp "lib/sanscript-classes" src/bhaashik/morph/**/*.java
+   ```
 
 ### Build Commands
 
@@ -23,17 +39,16 @@ This is a Java-based morphological analysis API that converts linguistic data fr
 # Compile the entire project (from project root)
 javac -d bin -cp "lib/sanscript-classes" src/bhaashik/morph/**/*.java
 
-# Or compile with JAR library (used by actual scripts)
+# Or compile with JAR library (used by generation scripts)
 javac -d bin -cp "lib/sanscript-java_2.12-0.4.jar" src/bhaashik/morph/**/*.java
 
-# On Windows, use semicolons in classpath
-javac -d bin -cp "lib/sanscript-classes" src/bhaashik/morph/**/*.java
+# On Windows CMD, use semicolons in classpath
+javac -d bin -cp "lib/sanscript-classes;lib/sanscript-java_2.12-0.4.jar" src/bhaashik/morph/**/*.java
 ```
 
 **Important Notes:**
-- The actual generation scripts use `lib/sanscript-java_2.12-0.4.jar` in the classpath
-- Both `lib/sanscript-classes/` (compiled from source) and `lib/sanscript-java_2.12-0.4.jar` are available
-- Use WSL2 Ubuntu JDK for development
+- The generation scripts (`create-*-monodix.sh`) use `lib/sanscript-java_2.12-0.4.jar` in the classpath
+- Both `lib/sanscript-classes/` (compiled from source) and `lib/sanscript-java_2.12-0.4.jar` are available and interchangeable
 
 ### Generate Monodix Files
 
@@ -59,14 +74,22 @@ create-bhojpuri-monodix.bat
 Following Apertium best practices for Indic languages, this project generates **both WX and native script** versions of monodix files:
 
 ```bash
-# Convert any WX monodix file to Devanagari
+# Convert any WX monodix file to Devanagari (streaming mode for large files)
+java -cp "bin:lib/sanscript-java_2.12-0.4.jar" bhaashik.morph.util.MonodixScriptConverterStreaming \
+    input.dix output.dix Devanagari
+
+# Non-streaming converter (for smaller files)
 java -cp "bin:lib/sanscript-java_2.12-0.4.jar" bhaashik.morph.util.MonodixScriptConverter \
     input.dix output.dix Devanagari
 
 # Supported scripts: Devanagari, Bengali, Gujarati, Gurmukhi, Kannada, Malayalam, Oriya, Tamil, Telugu
 ```
 
-**Why both versions?**
+**Streaming vs Non-Streaming Converter:**
+- `MonodixScriptConverterStreaming`: For large files (>100MB), processes line-by-line, constant memory usage (~16KB buffer), ~120,000 lines/sec
+- `MonodixScriptConverter`: For smaller files (<100MB), loads entire file into memory
+
+**Why both WX and native script versions?**
 - **WX (ASCII)**: Easier for version control, editing, and collaboration
 - **Native script**: Required for end-users and standard Apertium tools
 - Generated files have identical FST functionality
@@ -77,12 +100,25 @@ java -cp "bin:lib/sanscript-java_2.12-0.4.jar" bhaashik.morph.util.MonodixScript
 # Compile tests first
 javac -d bin -cp "bin:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar:lib/sanscript-classes" test/bhaashik/morph/*.java
 
-# Run all tests (Linux/Mac)
-java -cp "bin:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar:lib/sanscript-classes" org.junit.runner.JUnitCore bhaashik.morph.MonolingualDictionaryTest bhaashik.morph.MorphologicalUnitTest bhaashik.morph.StemExtractionTest bhaashik.morph.TAMMapperTest bhaashik.morph.WXConverterTest
+# Run all tests (Linux/Mac/WSL2)
+java -cp "bin:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar:lib/sanscript-classes" \
+    org.junit.runner.JUnitCore \
+    bhaashik.morph.MonolingualDictionaryTest \
+    bhaashik.morph.MorphologicalUnitTest \
+    bhaashik.morph.StemExtractionTest \
+    bhaashik.morph.TAMMapperTest \
+    bhaashik.morph.WXConverterTest
 
-# On Windows (use semicolons)
-java -cp "bin;lib/junit-4.13.2.jar;lib/hamcrest-core-1.3.jar;lib/sanscript-classes" org.junit.runner.JUnitCore bhaashik.morph.MonolingualDictionaryTest
+# Run a single test class
+java -cp "bin:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar:lib/sanscript-classes" \
+    org.junit.runner.JUnitCore bhaashik.morph.WXConverterTest
+
+# On Windows CMD (use semicolons)
+java -cp "bin;lib/junit-4.13.2.jar;lib/hamcrest-core-1.3.jar;lib/sanscript-classes" ^
+    org.junit.runner.JUnitCore bhaashik.morph.MonolingualDictionaryTest
 ```
+
+**Test Statistics:** 5 test classes, 33 tests total (all passing)
 
 ## Architecture
 
@@ -106,6 +142,15 @@ java -cp "bin;lib/junit-4.13.2.jar;lib/hamcrest-core-1.3.jar;lib/sanscript-class
    - `LongestCommonPrefixStrategy`: For suffixing languages (default for Indic)
    - `LongestCommonSubsequenceStrategy`: For non-concatenative morphology
 
+4. **Utilities Layer** (`src/bhaashik/morph/util/` and `src/bhaashik/morph/encoding/`)
+   - `TAMMapper`: Cross-language TAM (Tense-Aspect-Mood) mapping
+   - `MonodixScriptConverter`: Non-streaming script converter
+   - `MonodixScriptConverterStreaming`: Streaming script converter for large files
+   - `WXConverter`: WX notation ↔ Indic scripts encoding conversion (powered by Sanscript library)
+   - `GraphemeUtils`: Grapheme-aware string operations for Indic scripts (uses Java BreakIterator for correct handling of combining characters)
+   - `DixValidator`: Validates generated .dix files
+   - `AffixExtractor`: Utility for extracting affixes from word forms
+
 ### Data Flow
 
 ```
@@ -118,6 +163,8 @@ Internal Models (ParadigmCategory, FeatureStructure, LexiconEntry)
 ApertiumMonodixWriter (with StemExtractionStrategy + TAMMapper)
     ↓
 Apertium Monodix XML (.dix)
+    ↓
+MonodixScriptConverter[Streaming] (optional: WX → Devanagari)
     ↓
 Apertium lt-comp (external tool)
     ↓
@@ -204,6 +251,15 @@ The `WXConverter` (powered by Sanscript library) handles:
 - Conversion to Roman schemes (IAST, ITRANS, Harvard-Kyoto, SLP1)
 - Location: `src/bhaashik/morph/encoding/WXConverter.java`
 
+**Important Note on String Operations with Indic Scripts**:
+- Java's `String.length()` counts UTF-16 code units, NOT grapheme clusters (user-perceived characters)
+- Indic vowel marks (maatraas), nuktas, and halants are combining characters that attach to base characters
+- Example: "किताबुल" = 7 graphemes (क + ि + त + ा + ब + ु + ल) but fewer UTF-16 code units because ि, ा, ु are combining marks
+- For correct length/substring operations with Devanagari, count **all graphemes individually**
+- Current implementation uses WX notation (ASCII-based, one-to-one mapping) to avoid these issues
+- `GraphemeUtils.java` provides grapheme-aware operations using Java's `BreakIterator` for future Devanagari processing
+- When working directly with Devanagari text, use `GraphemeUtils` instead of standard String methods
+
 ## Output Format
 
 The generated Apertium monodix (.dix) files contain:
@@ -230,6 +286,8 @@ lt-comp rl bhojpuri-monodix.dix bhojpuri-generator.bin
 - Core writer: `src/bhaashik/morph/io/ApertiumMonodixWriter.java`
 - Readers: `src/bhaashik/morph/io/*Reader.java`
 - Models: `src/bhaashik/morph/model/*.java`
+- Utilities: `src/bhaashik/morph/util/*.java`
+- Encoding: `src/bhaashik/morph/encoding/*.java`
 
 ### Input Data
 - Linguistic resources: `input/Bhojpuri-Magahi-and-Maithili-Linguistic-Resources/`
@@ -240,10 +298,11 @@ lt-comp rl bhojpuri-monodix.dix bhojpuri-generator.bin
 
 ### Output
 - Generated files: `output/` directory (created automatically)
-- Default output filenames: `{language}-monodix.dix`
+- Default output filenames: `{language}-monodix.dix`, `{language}-wx.dix`, `{language}-deva.dix`
 
 ### Dependencies
-- `lib/sanscript-classes/`: Compiled Sanscript library
+- `lib/sanscript-classes/`: Compiled Sanscript library (from source)
+- `lib/sanscript-java_2.12-0.4.jar`: Sanscript JAR (used by scripts)
 - `lib/sanscript-source/`: Sanscript source code
 - `lib/*.jar`: JUnit, Jackson, and other dependencies
 
@@ -251,7 +310,50 @@ lt-comp rl bhojpuri-monodix.dix bhojpuri-generator.bin
 - Location: `test/bhaashik/morph/`
 - 5 test classes, 33 tests total (all passing)
 
-## Recent Fixes and Known Issues
+## Recent Fixes and Implementation History
+
+### ✅ FIXED (Jan 2026): Stem-Suffix Separation in Pardef Structure
+
+**Major Implementation**: Correct per-category pardef structure following official Apertium standards.
+
+**Previous Problem**: Implementation did not follow Apertium's stem/lemma_suffix naming convention, resulting in:
+- 217,227 pardefs (one per word instead of per category)
+- 437 MB file size
+- Generic pardef names like `Noun_m` instead of `stem/suffix__category`
+
+**Current Implementation** (CORRECT - based on `examples/apertium-bho.bho.dix`):
+```xml
+<!-- PARDEF: One per paradigm category, named with example stem/suffix -->
+<pardef n="ध/ी__n_f">
+  <e><p><l>ी</l><r>ी<s n="n"/><s n="f"/><s n="sg"/></r></p></e>
+  <e><p><l>ियाँ</l><r>ी<s n="n"/><s n="f"/><s n="pl"/></r></p></e>
+</pardef>
+
+<!-- LEXICON: Multiple words share same pardef -->
+<e lm="कहनी"><i>कहन</i><par n="ध/ी__n_f"/></e>  <!-- lemma=कहनी, stem=कहन -->
+<e lm="बच्चा"><i>बच्च</i><par n="ध/ा__n_m"/></e>  <!-- lemma=बच्चा, stem=बच्च -->
+```
+
+**Key Understanding**:
+- The "ध/ी" in pardef name is a **LABEL** showing the morphological pattern, NOT the actual stem of every word
+- Each paradigm category gets ONE pardef (e.g., all feminine nouns ending in ी share the same `ध/ी__n_f` pardef)
+- Individual word stems are written in the `<i>` tag of lexicon entries
+- Pardef contains the inflection rules that apply to all words in that category
+
+**Implementation Methods** (in `ApertiumMonodixWriter.java`):
+- `writeParadigmDefinitionsWithStemSuffix()` - generates per-category pardefs with stem/suffix labels
+- `writeMainSectionWithStems()` - extracts individual stems for each lexicon entry
+- `extractStemForLexiconEntry()` - calculates stem by removing paradigm's suffix from lemma
+
+**Results Achieved**:
+- **Bhojpuri**: 34 MB, 111 pardefs, 487,311 entries
+- **Maithili**: 10 MB, 84 pardefs, 142,883 entries
+- **Magahi**: 15 MB, 85 pardefs, 219,411 entries
+- File size reduction: 437 MB → 34 MB (13x smaller for Bhojpuri)
+- Pardef count: 217,227 → 111 (1,956x reduction)
+- Format: ✅ Matches official Apertium Bhojpuri/Hindi standards
+
+See `SESSION-2026-01-08-SUCCESS.md` for detailed implementation documentation.
 
 ### ✅ FIXED (Nov 2025): Empty `<l>` Tags and Missing Symbol Definitions
 
@@ -269,76 +371,6 @@ Two critical compilation issues were identified and fixed in November 2025:
 - **Fix**: Modified `collectSymbolsFromFeatureStructure()` (lines 354-366) to add both keys and values
 - **Result**: All symbols now properly defined before use
 
-See `SESSION-2025-11-23-monodix-compilation-fixes.md` for detailed fix documentation.
-
-### ⚠️ Known Issue: Stem-Suffix Separation in Pardef Structure
-
-**Problem**: The current implementation does NOT fully follow Apertium's recommended stem/lemma_suffix naming convention for pardefs.
-
-**Current behavior** (INCORRECT):
-```xml
-<pardef n="Noun_m">
-  <e><p><l>ों</l><r><s n="n"/><s n="m"/><s n="pl"/></r></p></e>
-</pardef>
-
-<section id="main">
-  <e lm="घर">
-    <i>घर</i>
-    <par n="Noun_m"/>
-  </e>
-</section>
-```
-
-**Expected behavior** (CORRECT - see `examples/apertium-hin.hin.dix.xml`):
-```xml
-<pardef n="वध/ू__n_f">
-  <e><p><l>ू</l><r>ू<s n="n"/><s n="f"/><s n="sg"/><s n="nom"/></r></p></e>
-  <e><p><l>ुएँ</l><r>ू<s n="n"/><s n="f"/><s n="pl"/><s n="nom"/></r></p></e>
-  <e><p><l>ुओं</l><r>ू<s n="n"/><s n="f"/><s n="pl"/><s n="obl"/></r></p></e>
-</pardef>
-
-<section id="main">
-  <e lm="वधू">
-    <i>वध</i>              <!-- STEM only -->
-    <par n="वध/ू__n_f"/>   <!-- Pardef name: stem/lemma_suffix__category -->
-  </e>
-</section>
-```
-
-**Understanding the format**:
-- **Lemma**: वधू (vadhū)
-- **Stem**: वध (vadh)
-- **Lemma suffix**: ू (ū)
-- **Pardef name**: `वध/ू__n_f` means "lemma वधू = stem वध + lemma_suffix ू"
-
-The pardef then shows all possible suffixes:
-- `<l>ू</l>` → वध + ू = वधू (singular nominative)
-- `<l>ुएँ</l>` → वध + ुएँ = वधुएँ (plural nominative)
-- `<l>ुओं</l>` → वध + ुओं = वधुओं (plural oblique)
-
-**Why this matters**:
-- The FST needs to know: lemma = stem + lemma_suffix
-- For **generation**: Remove lemma_suffix from lemma → get stem → add appropriate suffix from pardef
-- For **analysis**: Identify stem → match with pardef → determine which lemma and morphological tags
-
-**Root cause**:
-- Line 248 in `ApertiumMonodixWriter.java`: Uses `category.getCategoryName()` instead of `stem/lemma_suffix__category` format
-- Line 270-278: Extracts suffixes but doesn't encode the lemma split in the pardef name
-- Line 370: Writes full lemma in `<i>` tag instead of just the stem
-
-**Fix needed**:
-1. Modify `writeParadigmDefinition()` to:
-   - Extract stem from lemma (using stemExtractor)
-   - Calculate lemma_suffix = lemma - stem
-   - Generate pardef name as: `stem/lemma_suffix__category_name`
-   - Write `<l>` entries with the varying suffixes (already done correctly)
-   - Write `<r>` entries with the lemma_suffix + tags
-2. Modify `writeMainSection()` to:
-   - Extract stem from each lexicon entry's lemma
-   - Write only the stem in `<i>` tag
-   - Reference the correctly formatted pardef name (stem/lemma_suffix__category)
-3. Handle pardef name generation per lexicon entry (since each lemma may have different stem/suffix split)
-
 ### ✅ HANDLED: Variant Forms (Dialectal Variations)
 
 **Status**: The code now properly handles dialectal/regional variants separated by `/` in paradigm files.
@@ -349,12 +381,26 @@ The pardef then shows all possible suffixes:
 
 ## Performance and File Statistics
 
-### Bhojpuri Monodix Generation (Reference)
-- **Generation Time**: ~75 minutes for full dictionary
-- **Output File Size**: ~437 MB (WX notation)
-- **Paradigm Definitions**: 217,227
-- **Lexicon Entries**: 218,242 (from 571,558 source entries)
-- **Legitimate Empty `<l>` Tags**: 103 (zero-suffix forms like adverbs, uninflecting adjectives)
+### Current Generation Statistics (Jan 2026)
+
+All three languages successfully generated with correct Apertium format:
+
+| Language | File Size | Pardefs | Lexicon Entries | Bytes/Entry | Lines |
+|----------|-----------|---------|-----------------|-------------|-------|
+| **Bhojpuri** | 34 MB | 111 | 487,311 | 73 | 519,485 |
+| **Maithili** | 10 MB | 84 | 142,883 | 74 | 173,564 |
+| **Magahi** | 15 MB | 85 | 219,411 | 72 | 243,884 |
+| **Total** | 59 MB | 280 | 849,605 | - | 936,933 |
+
+**Efficiency Comparison**:
+- Our Bhojpuri: 73 bytes/entry
+- Official Hindi (apertium-hin): 95 bytes/entry
+- Official Bhojpuri example (apertium-bho): 520 bytes/entry (includes documentation)
+
+**Historical Improvement** (Bhojpuri):
+- Old implementation: 437 MB, 217,227 pardefs (one per word)
+- Current implementation: 34 MB, 111 pardefs (one per category)
+- Reduction: 13x smaller file, 1,956x fewer pardefs
 
 ### Script Conversion Performance
 - **MonodixScriptConverterStreaming**: Production converter for large files
@@ -386,6 +432,14 @@ javac -d bin -cp "lib/sanscript-classes" src/bhaashik/morph/**/*.java
 bash create-bhojpuri-monodix.sh
 ```
 
+### Convert existing WX monodix to Devanagari
+```bash
+java -cp "bin:lib/sanscript-java_2.12-0.4.jar" bhaashik.morph.util.MonodixScriptConverterStreaming \
+    output/bhojpuri-wx.dix \
+    output/bhojpuri-deva.dix \
+    Devanagari
+```
+
 ### Debug parsing issues
 Check the console output from `ApertiumCreatorMain` which shows:
 - Number of paradigm categories loaded
@@ -407,3 +461,22 @@ grep -o '<sdef n="[^"]*"' output/bhojpuri-monodix.dix | sed 's/<sdef n="//' | se
 grep -o '<s n="[^"]*"' output/bhojpuri-monodix.dix | sed 's/<s n="//' | sed 's/"//' | sort -u > /tmp/used_sdefs.txt
 comm -23 /tmp/used_sdefs.txt /tmp/defined_sdefs.txt  # Should be empty
 ```
+
+## References and Documentation
+
+### Apertium Official Documentation
+- **Monodix Basics**: https://wiki.apertium.org/wiki/Monodix_basics
+- **Monodix Format**: https://wiki.apertium.org/wiki/Monodix
+- See `Apertium-References.txt` for complete reference list
+
+### Example Files in Repository
+- `examples/apertium-bho.bho.dix` - Official Bhojpuri monodix (reference implementation)
+- `examples/apertium-hin.hin.dix.xml` - Hindi monodix example
+- These examples demonstrate correct pardef structure and stem/suffix separation
+
+### Session Documentation
+Recent development work is documented in session files:
+- `SESSION-2026-01-08-SUCCESS.md` - Successful stem/suffix implementation (Jan 2026)
+- `SESSION-2026-01-08-stem-suffix-results.md` - Detailed results and analysis
+- `STEM-SUFFIX-IMPLEMENTATION-PLAN.md` - Original implementation plan
+- These files contain valuable implementation details and lessons learned
