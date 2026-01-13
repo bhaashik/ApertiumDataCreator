@@ -2,6 +2,7 @@
 excluded/
 output-tmp/
 source-files-06-05-25/
+lib/sanscript-source/
 
 ### IntelliJ IDEA ###
 out/
